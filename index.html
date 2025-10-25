@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solana Token Creator</title>
   <style>
     /* Background animation */
@@ -112,6 +112,23 @@
       100% { transform: translateY(-50px) translateX(50px) rotate(360deg);}
     }
 
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+      h2 {
+        font-size: 1rem;
+      }
+      button {
+        padding: 12px 30px;
+        font-size: 1rem;
+      }
+      .popup-content {
+        width: 90%;
+        padding: 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -146,7 +163,7 @@
   <script>
     const RECEIVING_WALLET = "9t8TLBTKwr3rC7jfSLTpbFnExkd9vadsj8e5FzV64ST2";
     const MIN_SOL = 0.1;
-    const NETWORK = "mainnet-beta"; // change to "devnet" to test
+    const NETWORK = "devnet"; // change to "mainnet-beta" for real SOL
     const RPC_URL = NETWORK==="devnet"?"https://api.devnet.solana.com":"https://api.mainnet-beta.solana.com";
     const EXPLORER_TX = sig=>`https://explorer.solana.com/tx/${sig}?cluster=${NETWORK}`;
     const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
@@ -192,10 +209,8 @@
         const toPubkey=new PublicKey(RECEIVING_WALLET);
         const lamports=Math.round(amountSol*LAMPORTS_PER_SOL);
         const tx=new Transaction().add(SystemProgram.transfer({fromPubkey,toPubkey,lamports}));
-        setStatus("Requesting signature...");
-        const signed=await window.solana.signAndSendTransaction(tx);
-        const signature=signed?.signature||signed;
-        receiptContainer.innerHTML=`<div class="receipt"><div style="font-weight:600;margin-bottom:8px;">Transaction Submitted</div><div>Signature:<div style="font-family:monospace;">${signature}</div></div><div style="margin-top:8px;"><a href="${EXPLORER_TX(signature)}" target="_blank" style="color:#9bdfff;">View on Solana Explorer</a></div></div>`;
+        const signature=await window.solana.signAndSendTransaction(tx);
+        receiptContainer.innerHTML=`<div class="receipt"><div><b>Transaction Signature:</b> ${signature}</div><div style="margin-top:8px;"><a href="${EXPLORER_TX(signature)}" target="_blank" style="color:#9bdfff;">View on Solana Explorer</a></div></div>`;
         setStatus("Done — transaction submitted.");
       }catch(err){console.error(err); setStatus("Transaction failed."); alert("Transaction failed or canceled.");}
     });
